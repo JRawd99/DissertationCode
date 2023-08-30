@@ -1,0 +1,76 @@
+library(glue)
+library(MASS)
+input2 = read.csv("data input here")
+input3 = input2
+specs = input2["range of species here"]
+
+merged = read.csv("combined species csv of all best predictor variables")
+merged = merged["subset out first column here"]
+
+outputdf = data.frame()
+
+for (i in 1:2) {
+  speciesname = colnames(specs[i])
+  df = merged[i,]
+  df = as.list(df)
+  df = df[nzchar(df)]
+  df = as.character(df)
+  input4 = input3[,c(df, speciesname)]
+  input5 = input3[,c(df, speciesname, "Wetness")]
+  input6 = input3[,c(df, speciesname, "Lag")]
+  input7 = input3[,c(df, speciesname, "Wetness", "Lag")]
+  colnames(input4)[colnames(input4) == speciesname] = "modely"
+  colnames(input5)[colnames(input5) == speciesname] = "modely"
+  colnames(input6)[colnames(input6) == speciesname] = "modely"
+  colnames(input7)[colnames(input7) == speciesname] = "modely"
+  
+  nullmodel = glm(formula = modely~1, data=input4, family = "poisson")
+  nullnulldev = nullnb$null.deviance
+  nullredev = nullnb$deviance
+  nulldevexp =(nullnulldev - nullredev)/nullnulldev
+  nulldisp = summary(nullnb)$deviance / summary(nullnb)$df.residual
+  
+  Envmodel = glm(formula = modely ~ ., data = input4, family = "poisson")
+  Envnulldev = nbEnv$null.deviance
+  Envredev =nbEnv$deviance
+  Envdevexp =(Envnulldev - Envredev)/Envnulldev
+  Envdisp = summary(nbEnv)$deviance / summary(nullnb)$df.residual
+  
+  
+  Wetmodel = glm(formula = modely~ ., data = input5, family = "poisson")
+  Wetnulldev =nbWet$null.deviance
+  Wetredev =nbWet$deviance
+  Wetdevexp =(Wetnulldev - Wetredev)/Wetnulldev
+  Wetdisp = summary(nbWet)$deviance / summary(nullnb)$df.residual
+  
+  
+  Lagmodel = glm(formula = modely ~ ., data = input6, family = "poisson")
+  Lagnulldev = nbLag$null.deviance
+  Lagredev =nbLag$deviance
+  Lagdevexp =(Lagnulldev - Lagredev)/Lagnulldev
+  Lagdisp = summary(nbLag)$deviance / summary(nullnb)$df.residual
+  
+  
+  Bothmodel = glm(formula = modely ~ ., data = input7, family = "poisson")
+  Bothnulldev =nbBoth$null.deviance
+  Bothredev =nbBoth$deviance
+  Bothdevexp =(Bothnulldev - Bothredev)/Bothnulldev
+  Bothdisp = summary(nbBoth)$deviance / summary(nullnb)$df.residual
+  
+  
+  devlist = list(nulldevexp, Envdevexp, Wetdevexp, Lagdevexp, Bothdevexp)
+  displist = list(nulldisp, Envdisp, Wetdisp, Lagdisp, Bothdisp)
+  
+  aics = AIC(nullmodel, Envmodel, Wetmodel, Lagmodel, Bothmodel)
+  aics = as.data.frame(aics)
+  aics$devlist = devlist
+  aics$displist = displist
+  aics$modelnames = row.names(aics)
+
+  outputdf = rbind(finalnb, aics)
+  input3 = input2
+}
+
+outputdf <- apply(outputdf,2,as.character)
+write.csv(outputdf, "modeloutput.csv")
+
