@@ -1,0 +1,42 @@
+library(raster)
+
+ras = stack("Raster")
+XY = read.csv("Point coords here")
+coordinates(XY)= ~ x + y
+value=extract(ras, XY)
+value = as.data.frame(value)
+combineCoordsVals=cbind(XY,value)
+write.csv(combineCoordsVals, "combineCoordsVals.csv")
+
+bigcsv = read.csv("combineCoordsVals.csv")
+bigcsv2 = as.data.frame(t(bigcsv))
+bigcsv3 = as.data.frame(bigcsv2[3:50,])
+FullTL231 = read.csv("FullTL231.csv")
+Dates = read.csv("Dates2.csv")
+test = as.data.frame(bigcsv3[,1])
+Dates1 = as.data.frame(Dates['Date1'])
+Dates1 = as.data.frame(as.Date(Dates1$Date1, format = '%Y-%m-%d'))
+test = Dates1
+FullTL231$Date = as.Date(FullTL231$Date, format = '%d/%m/%Y')
+
+
+Cordata = data.frame()
+
+
+for (i in 1:15407) {
+  Corcheck = data.frame()
+  df1 = bigcsv3[i]
+  df2 = Dates1
+  df3 = FullTL231
+  for (i in 0:100) {
+    testdate = df2 + i
+    df5 = df3[df3$Date %in% testdate$`as.Date(Dates1$Date1, format = "%Y-%m-%d")`,]
+    df5$NDWI = df1
+    corr = cor(df5$Level.mAOD.TL231, df5$NDWI)
+    Corcheck = rbind(Corcheck, corr)
+  }
+  Cordata = rbind(Cordata, which.max(Corcheck[,1]))
+}
+
+write.csv(Cordata, "Cordata.csv")
+
