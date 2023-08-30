@@ -1,0 +1,105 @@
+//Shapefile of Thompson Common has been imported as 'table'.
+
+var dataset2 = ee.ImageCollection('COPERNICUS/S2_SR').filterBounds(table).filter(ee.Filter.eq('MGRS_TILE',"30UYD")).select(['B2', 'B3', 'B4', 'B8', 'B11']).map(function(image){return image.clip(table)});
+
+var datelist = ee.List(['2018-04-19','2018-05-07','2018-05-19','2018-05-22','2018-05-24','2018-06-06','2018-06-11','2018-06-26','2018-07-01','2018-07-03','2018-07-26','2018-07-31','2018-08-02','2018-09-26','2018-09-29','2018-10-09','2019-02-26','2019-03-05','2019-05-14','2019-05-24','2019-06-01','2019-07-23','2019-08-25','2019-09-14','2019-09-21','2020-03-22','2020-03-24','2020-03-27','2020-04-11','2020-04-16','2020-04-21','2020-04-23','2020-04-26','2020-05-06','2020-05-28','2020-06-25','2020-07-30','2020-08-09','2020-09-18','2021-02-27','2021-03-19','2021-04-23','2021-05-31','2021-06-02','2021-06-07','2021-07-17','2021-08-11','2021-09-08'])
+.map(function(date){return ee.Date(date).millis()})
+
+var dataset = dataset2.filter(ee.Filter.inList("simpleTime", datelist))
+
+var NDWI = function(image) {
+    var ndwi = image.normalizedDifference(['B3', 'B8']).rename('NDWI');
+  return ndwi;
+  
+};
+
+var withNDWI = dataset.map(NDWI);
+
+//Section used to set threshold for hydroperiod. Ignore if generating Mean NDWI layer
+
+var remapndwi = function(image) {
+  var image2 = image.where(image.lt(-0.6), 0);
+  var image3 = image2.where(image.gte(-0.6), 1);
+  return image3
+  
+}
+
+var mskpt1 = withNDWI.map(remapndwi);
+
+//End of section
+
+var weightings59 = ee.List([
+0.006656805,
+0.011094675,
+0.005547337,
+0.001849112,
+0.005547337,
+0.006656805,
+0.00739645,
+0.00739645,
+0.002588757,
+0.009245562,
+0.01035503,
+0.002588757,
+0.021079882,
+0.021449704,
+0.004807692,
+0.055473373,
+0.054363905,
+0.028476331,
+0.029585799,
+0.006656805,
+0.022189349,
+0.031434911,
+0.019600592,
+0.009985207,
+0.070266272,
+0.06841716,
+0.001849112,
+0.006656805,
+0.00739645,
+0.003698225,
+0.002588757,
+0.001849112,
+0.004807692,
+0.01183432,
+0.018491124,
+0.023298817,
+0.016642012,
+0.018491124,
+0.074704142,
+0.067307692,
+0.020340237,
+0.026997041,
+0.014792899,
+0.002588757,
+0.016642012,
+0.024038462,
+0.019600592,
+0.01035503
+]);
+
+var TEST =   48;
+
+var zipped = mskpt1.toList(TEST).zip(weightings59);
+
+//Following section of code was modified from https://gis.stackexchange.com/questions/363735/multiplying-image-collection-by-list-of-numbers-pairwise-using-google-earth-en 
+
+var scaledimages = ee.ImageCollection.fromImages(
+  zipped.map(function (listy) {
+    listy = ee.List(listy);
+    var imgy = ee.Image(listy.get(0));
+    var scaly = listy.getNumber(1);
+    var scaleimgy = imgy.multiply(scaly);
+    return scaleimgy.double();
+  })
+);
+
+var finalimg = scaledimages.sum();
+
+Export.image.toDrive({
+  image:finalimg,
+  description:'NewWeightings3',
+  scale:10,
+  region:table,
+});
