@@ -1,0 +1,26 @@
+library(glue)
+library(MASS)
+input2 = read.csv("data input here")
+input3 = input2
+specs = input2["range of species here"]
+
+for (i in 1:76) {
+  speciesname = colnames(specs[i])
+  colnames(input3)[colnames(input3) == speciesname] = "modely"
+  big = glm(formula = modely ~ Shade + 
+              Area + 
+              WinterDepth +
+              Conductivity + 
+              pH + 
+              Dissolvedoxygen +
+              Temp, data = input3, family = "poisson") 
+  step = step(big)
+  one = step$R
+  two = as.data.frame(one)
+  three = colnames(two)
+  four = as.data.frame(three)
+  five = t(four)
+  save1 = glue("species{i}.csv")
+  write.csv(five, save1)
+  input3 = input2
+}
